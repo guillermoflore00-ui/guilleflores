@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Tomada - Trivia + Minijuego</title>
+<style>
+  /* =======================================================
+     ZONA DE EDICIÓN DE ESTILOS (JUEGO 1 - TRIVIA):
+     colores, tamaños de las cartas y velocidad de la
+     levitación.
+  ========================================================== */
+  :root {
+    --mesa-1: #0b5c34;
+    --mesa-2: #073b21;
+    --cartel-madera-1: #8a5a2b;
+    --cartel-madera-2: #6b4118;
+    --carta-ancho: 150px;
+    --carta-alto: 210px;
+    --velocidad-flotacion: 3.5s;
+    --vida-color-ok: #a6ff00;
+    --vida-color-perdida: #e74c3c;
+    --vida-tamano: 34px;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 60%),
+      linear-gradient(135deg, var(--mesa-1), var(--mesa-2));
+    padding: 30px;
+    overflow-x: hidden;
+  }
+
+  .mesa {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 45px;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  /* ---------- EL CARTEL DE LA PREGUNTA ---------- */
+  .progreso {
+    font-size: 13px;
+    color: #ffe9c2;
+    margin-bottom: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+  }
+
+  .cartel {
+    position: relative;
+    background: linear-gradient(180deg, var(--cartel-madera-1), var(--cartel-madera-2));
+    border: 4px solid #4a2f13;
+    border-radius: 10px;
+    padding: 28px 50px;
+    max-width: 640px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.45), inset 0 0 15px rgba(0,0,0,0.35);
+    animation: colgarCartel 0.6s ease;
+  }
+
+  /* Cuerdas/clavos que "cuelgan" el cartel */
+  .cartel::before,
+  .cartel::after {
+    content: "";
+    position: absolute;
+    top: -14px;
+    width: 16px;
+    height: 16px;
+    background: #2e2e2e;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.6), inset 0 0 3px rgba(0,0,0,0.8);
+  }
+  .cartel::before { left: 18px; }
+  .cartel::after  { right: 18px; }
+
+  @keyframes colgarCartel {
+    0%   { opacity: 0; transform: translateY(-25px) rotate(-2deg); }
+    60%  { transform: translateY(4px) rotate(1deg); }
+    100% { opacity: 1; transform: translateY(0) rotate(0); }
+  }
+
+  h1 {
+    font-size: 22px;
+    color: #fff3df;
+    line-height: 1.5;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  /* ---------- SISTEMA DE VIDAS (CASITAS) - JUEGO 1 ---------- */
+  .vidas {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .casa {
+    position: relative;
+    width: var(--vida-tamano);
+    height: var(--vida-tamano);
+    background: var(--vida-color-ok);
+    clip-path: polygon(50% 0%, 100% 38%, 100% 100%, 0% 100%, 0% 38%);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+    transition: background 0.4s ease, transform 0.3s ease;
+  }
+
+  .casa::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 38%;
+    width: 24%;
+    height: 40%;
+    background: rgba(0,0,0,0.25);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .casa.perdida {
+    background: var(--vida-color-perdida);
+    animation: sacudirCasa 0.4s ease;
+  }
+
+  @keyframes sacudirCasa {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    25%      { transform: translateX(-4px) rotate(-8deg); }
+    75%      { transform: translateX(4px) rotate(8deg); }
+  }
+
+  /* ---------- LAS CARTAS DE POKER (OPCIONES) - JUEGO 1 ---------- */
+  .opciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 35px;
+    padding: 20px 0;
+  }
+
+  .opcion {
+    position: relative;
+    width: var(--carta-ancho);
+    height: var(--carta-alto);
+    background: linear-gradient(160deg, #ffffff, #f2f2f2);
+    border: 2px solid #ccc;
+    border-radius: 14px;
+    box-shadow: 0 15px 25px rgba(0,0,0,0.35);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 18px 12px;
+    font-size: 17px;
+    font-weight: bold;
+    color: #1e1e1e;
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    animation: flotar var(--velocidad-flotacion) ease-in-out infinite;
+  }
+
+  .opcion .pip {
+    position: absolute;
+    font-size: 15px;
+    font-weight: bold;
+    line-height: 1;
+  }
+  .opcion .pip.superior { top: 10px; left: 12px; }
+  .opcion .pip.inferior {
+    bottom: 10px;
+    right: 12px;
+    transform: rotate(180deg);
+  }
+  .opcion .pip.roja { color: #c0392b; }
+  .opcion .pip.negra { color: #222; }
+
+  .opcion .texto-opcion {
+    max-width: 100%;
+    word-break: break-word;
+    padding: 0 4px;
+  }
+
+  @keyframes flotar {
+    0%   { transform: translateY(0px) rotate(0deg); }
+    50%  { transform: translateY(-16px) rotate(1.5deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+  }
+
+  .opcion:hover {
+    animation-play-state: paused;
+    border-color: #2a5298;
+    box-shadow: 0 22px 35px rgba(0,0,0,0.5);
+    transform: translateY(-10px) scale(1.04);
+  }
+
+  .opcion.correcta {
+    background: linear-gradient(160deg, #6fd07f, #3f9350) !important;
+    border-color: #2e7d32 !important;
+    color: white !important;
+    animation-play-state: paused;
+  }
+
+  .opcion.incorrecta {
+    background: linear-gradient(160deg, #e57368, #c0392b) !important;
+    border-color: #922b21 !important;
+    color: white !important;
+    animation-play-state: paused;
+  }
+
+  .opcion.deshabilitada {
+    pointer-events: none;
+  }
+
+  .mensaje {
+    margin-top: 10px;
+    font-size: 17px;
+    font-weight: bold;
+    min-height: 24px;
+    color: #fff3df;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .mensaje.ok { color: #8ef0a0; }
+  .mensaje.error { color: #ff9b91; }
+
+  /* ---------- PANTALLA FINAL - JUEGO 1 ---------- */
+  .final {
+    display: none;
+  }
+
+  .final .cartel h1 {
+    color: #fff3df;
+  }
+
+  .puntaje {
+    font-size: 42px;
+    color: #ffe9c2;
+    font-weight: bold;
+    margin: 20px 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .reiniciar {
+    margin-top: 5px;
+    background: #b8860b;
+    color: white;
+    border: 2px solid #4a2f13;
+    padding: 12px 30px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .reiniciar:hover {
+    background: #8a5a2b;
+    transform: translateY(-2px);
+  }
+
+  /* =======================================================
+     ZONA DE EDICIÓN DE ESTILOS (JUEGO 2 - LA CASA TOMADA):
+     todo lo del segundo minijuego usa el prefijo "ct-" para
+     no chocar con los estilos del trivia.
+  ========================================================== */
+  :root {
+    --ct-papel-1: #2b241c;
+    --ct-papel-2: #1a1510;
+    --ct-plano-fondo: #e8dcc0;
+    --ct-plano-linea: #b8a878;
+    --ct-habitacion-normal: #f3ecd8;
+    --ct-habitacion-tomada: #4a4238;
+    --ct-acento: #c0392b;
+    --ct-acento-ok: #6b8f3f;
+    --ct-texto-oscuro: #2b241c;
+  }
+
+  #segundoJuego {
+    display: none;
+    max-width: 720px;
+    width: 100%;
+  }
+
+  .ct-contenedor {
+    max-width: 720px;
+    width: 100%;
+    text-align: center;
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+
+  .ct-contenedor h1 {
+    color: #f3ecd8;
+    font-size: 26px;
+    letter-spacing: 1px;
+    text-shadow: 0 3px 6px rgba(0,0,0,0.6);
+    margin-bottom: 6px;
+  }
+
+  .ct-subtitulo {
+    color: #b8a878;
+    font-size: 14px;
+    font-style: italic;
+    margin-bottom: 18px;
+  }
+
+  .ct-estado {
+    color: #f3ecd8;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .ct-vidas {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .ct-vida {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    background: #a6ff00;
+    clip-path: polygon(50% 0%, 100% 38%, 100% 100%, 0% 100%, 0% 38%);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.6));
+    transition: background 0.4s ease, transform 0.3s ease;
+  }
+
+  .ct-vida::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 38%;
+    width: 24%;
+    height: 40%;
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .ct-vida.perdida {
+    background: #e74c3c;
+    animation: ctSacudirVida 0.4s ease;
+  }
+
+  @keyframes ctSacudirVida {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    25%      { transform: translateX(-4px) rotate(-8deg); }
+    75%      { transform: translateX(4px) rotate(8deg); }
+  }
+
+  .ct-mensaje {
+    min-height: 22px;
+    color: #e0c98f;
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+
+  .ct-mensaje.error { color: #ff8a7a; }
+  .ct-mensaje.ok { color: #b9e08a; }
+
+  .ct-plano {
+    background: var(--ct-plano-fondo);
+    border: 6px solid #4a3c26;
+    border-radius: 6px;
+    padding: 14px;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.55), inset 0 0 25px rgba(0,0,0,0.15);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 110px 34px 110px 46px;
+    grid-template-areas:
+      "biblioteca comedorFondo dormitorioHuespedes salaCostura"
+      "pasillo    pasillo      pasillo             pasillo"
+      "living     dormitorioIrene cocina           bano"
+      "entrada    entrada      entrada             entrada";
+    gap: 6px;
+  }
+
+  .ct-habitacion {
+    position: relative;
+    background: var(--ct-habitacion-normal);
+    border: 2px dashed var(--ct-plano-linea);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--ct-texto-oscuro);
+    font-size: 13px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1.3;
+    transition: background 0.35s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .ct-habitacion:hover {
+    background: #fff;
+    transform: scale(1.02);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+  }
+
+  .ct-habitacion .ct-numero {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 22px;
+    height: 22px;
+    background: var(--ct-papel-1);
+    color: #f3ecd8;
+    border-radius: 50%;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ct-habitacion.tomada {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--ct-habitacion-tomada),
+      var(--ct-habitacion-tomada) 8px,
+      #3a332a 8px,
+      #3a332a 16px
+    );
+    color: #d8cdb0;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .ct-habitacion.tomada .ct-numero {
+    background: var(--ct-acento);
+  }
+
+  .ct-habitacion.error {
+    animation: ctFlashError 0.4s ease;
+  }
+
+  @keyframes ctFlashError {
+    0%, 100% { background: var(--ct-habitacion-normal); }
+    50% { background: #e79b91; }
+  }
+
+  .ct-pasillo {
+    grid-area: pasillo;
+    background: #d8c9a0;
+    border: 2px solid var(--ct-plano-linea);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #6b5c3a;
+  }
+
+  .ct-entrada {
+    grid-area: entrada;
+    background: #6b5c3a;
+    border: 2px solid #4a3c26;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #f3ecd8;
+    transition: background 0.5s ease, box-shadow 0.5s ease;
+  }
+
+  .ct-entrada.abierta {
+    background: var(--ct-acento-ok);
+    box-shadow: 0 0 20px rgba(107,143,63,0.7);
+  }
+
+  #biblioteca            { grid-area: biblioteca; }
+  #comedorFondo          { grid-area: comedorFondo; }
+  #dormitorioHuespedes   { grid-area: dormitorioHuespedes; }
+  #salaCostura           { grid-area: salaCostura; }
+  #living                { grid-area: living; }
+  #dormitorioIrene       { grid-area: dormitorioIrene; }
+  #cocina                { grid-area: cocina; }
+  #bano                  { grid-area: bano; }
+
+  .ct-final {
+    display: none;
+    background: #1a1510;
+    border: 4px solid #4a3c26;
+    border-radius: 10px;
+    padding: 30px;
+    color: #f3ecd8;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.55);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    max-width: 640px;
+    width: 100%;
+  }
+
+  .ct-final h2 {
+    margin-bottom: 14px;
+    color: #e0c98f;
+  }
+
+  .ct-final p {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    font-style: italic;
+    color: #d8cdb0;
+  }
+
+  .ct-game-over {
+    display: none;
+    background: linear-gradient(180deg, #3a1010, #1a0505);
+    border: 4px solid #6b1414;
+    border-radius: 10px;
+    padding: 30px;
+    color: #ffe3df;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.5);
+    animation: ctColgarCartelGameOver 0.5s ease;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    max-width: 640px;
+    width: 100%;
+  }
+
+  @keyframes ctColgarCartelGameOver {
+    0%   { opacity: 0; transform: translateY(-20px) rotate(-2deg); }
+    60%  { transform: translateY(4px) rotate(1deg); }
+    100% { opacity: 1; transform: translateY(0) rotate(0); }
+  }
+
+  .ct-game-over h2 {
+    color: #ff8a7a;
+    font-size: 24px;
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+
+  .ct-game-over p {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    font-style: italic;
+    color: #f0c9c2;
+  }
+
+  .ct-reiniciar {
+    background: var(--ct-acento);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .ct-reiniciar:hover {
+    background: #922b21;
+    transform: translateY(-2px);
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= JUEGO 1: TRIVIA ================= -->
+<div class="mesa" id="tarjetaJuego">
+  <div>
+    <div class="progreso" id="progreso">PREGUNTA 1 DE 5</div>
+    <div class="vidas" id="vidasContenedor"></div>
+    <div class="cartel">
+      <h1 id="preguntaTexto">Cargando pregunta...</h1>
+    </div>
+  </div>
+
+  <div class="opciones" id="opcionesContenedor"></div>
+  <div class="mensaje" id="mensaje"></div>
+</div>
+
+<div class="mesa final" id="tarjetaFinal">
+  <div class="cartel">
+    <h1>¡Superaste todas las preguntas!</h1>
+    <div class="puntaje" id="puntajeFinal">0 / 5</div>
+    <button class="reiniciar" onclick="iniciarSegundoJuego()">Continuar a "La Casa Tomada" →</button>
+  </div>
+</div>
+
+<div class="mesa final" id="tarjetaDerrota">
+  <div class="cartel">
+    <h1>💀 ¡Perdiste! Te quedaste sin vidas</h1>
+    <div class="puntaje" id="puntajeDerrota">0 / 5</div>
+    <button class="reiniciar" onclick="reiniciarJuego()">Intentar de nuevo</button>
+  </div>
+</div>
+
+<!-- ================= JUEGO 2: LA CASA TOMADA (minijuego del mapa) ================= -->
+<div id="segundoJuego">
+
+  <div class="ct-contenedor" id="ctJuego" style="display:none;">
+    <h1>La Casa Tomada</h1>
+    <div class="ct-subtitulo">Basado en el cuento de Julio Cortázar</div>
+    <div class="ct-estado" id="ctEstado">Habitaciones tomadas: 0 / 8</div>
+    <div class="ct-vidas" id="ctVidasContenedor"></div>
+    <div class="ct-mensaje" id="ctMensaje">Hacé clic en las habitaciones en el orden en que la Presencia las fue tomando.</div>
+
+    <div class="ct-plano">
+      <div class="ct-habitacion" id="biblioteca" data-id="biblioteca">
+        <span class="ct-numero"></span>Biblioteca
+      </div>
+      <div class="ct-habitacion" id="comedorFondo" data-id="comedorFondo">
+        <span class="ct-numero"></span>Comedor del fondo
+      </div>
+      <div class="ct-habitacion" id="dormitorioHuespedes" data-id="dormitorioHuespedes">
+        <span class="ct-numero"></span>Dormitorio de huéspedes
+      </div>
+      <div class="ct-habitacion" id="salaCostura" data-id="salaCostura">
+        <span class="ct-numero"></span>Sala de costura
+      </div>
+
+      <div class="ct-pasillo">P A S I L L O</div>
+
+      <div class="ct-habitacion" id="living" data-id="living">
+        <span class="ct-numero"></span>Living
+      </div>
+      <div class="ct-habitacion" id="dormitorioIrene" data-id="dormitorioIrene">
+        <span class="ct-numero"></span>Dormitorio de Irene
+      </div>
+      <div class="ct-habitacion" id="cocina" data-id="cocina">
+        <span class="ct-numero"></span>Cocina
+      </div>
+      <div class="ct-habitacion" id="bano" data-id="bano">
+        <span class="ct-numero"></span>Baño
+      </div>
+
+      <div class="ct-entrada" id="ctEntrada">ZAGUÁN / SALIDA</div>
+    </div>
+  </div>
+
+  <div class="ct-final" id="ctPantallaFinal">
+    <h2>La casa quedó en silencio para siempre</h2>
+    <p id="ctTextoFinal"></p>
+    <button class="ct-reiniciar" onclick="ctReiniciarJuego()">Volver a jugar</button>
+  </div>
+
+  <div class="ct-game-over" id="ctPantallaGameOver">
+    <h2>💀 ¡Perdiste!</h2>
+    <p>Te equivocaste demasiadas veces y la Presencia avanzó antes de que pudieras entenderla. La casa te ganó a vos.</p>
+    <button class="ct-reiniciar" onclick="ctReiniciarJuego()">Intentar de nuevo</button>
+  </div>
+
+</div>
+
+<script>
+  /* =======================================================
+     ZONA DE EDICIÓN (JUEGO 1 - TRIVIA): acá podés modificar
+     las preguntas.
+     - "pregunta": el texto de la pregunta.
+     - "opciones": un array con EXACTAMENTE 3 opciones posibles.
+     - "correcta": el texto EXACTO (tal cual está escrito en "opciones")
+        de cuál es la respuesta correcta.
+     Podés agregar, quitar o modificar preguntas libremente,
+     siempre respetando esta misma estructura.
+  ========================================================== */
+  const preguntas = [
+    {
+      pregunta: "¿Que son la pareja protagonista?",
+      opciones: ["amantes", "hermanos", "viudos"],
+      correcta: "hermanos"
+    },
+    {
+      pregunta: "¿Cual es el pasatiempo de la mujer?",
+      opciones: ["pasear", "tejer", "cocinar"],
+      correcta: "tejer"
+    },
+    {
+      pregunta: "¿donde sucede el relato?",
+      opciones: ["chile", "buenos aires", "cordoba"],
+      correcta: "buenos aires"
+    },
+    {
+      pregunta: "¿de quienes fue la casa primero?",
+      opciones: ["de los padres", "de los bisabuelos", "de ellos"],
+      correcta: "de los bisabuelos"
+    },
+    {
+      pregunta: "¿cuel fue la primera parte que toman?",
+      opciones: ["el patio", "el baño", "el comedor"],
+      correcta: "el comedor"
+    }
+  ];
+  /* ======================= FIN ZONA DE EDICIÓN (JUEGO 1) ======================= */
+
+  const VIDAS_INICIALES = 3;
+
+  let preguntaActual = 0;
+  let puntaje = 0;
+  let vidas = VIDAS_INICIALES;
+  let bloqueado = false;
+
+  const progresoEl = document.getElementById("progreso");
+  const preguntaTextoEl = document.getElementById("preguntaTexto");
+  const opcionesContenedorEl = document.getElementById("opcionesContenedor");
+  const mensajeEl = document.getElementById("mensaje");
+  const tarjetaJuegoEl = document.getElementById("tarjetaJuego");
+  const tarjetaFinalEl = document.getElementById("tarjetaFinal");
+  const tarjetaDerrotaEl = document.getElementById("tarjetaDerrota");
+  const puntajeFinalEl = document.getElementById("puntajeFinal");
+  const puntajeDerrotaEl = document.getElementById("puntajeDerrota");
+  const vidasContenedorEl = document.getElementById("vidasContenedor");
+
+  function crearVidas() {
+    vidasContenedorEl.innerHTML = "";
+    for (let i = 0; i < VIDAS_INICIALES; i++) {
+      const casa = document.createElement("div");
+      casa.classList.add("casa");
+      vidasContenedorEl.appendChild(casa);
+    }
+  }
+
+  function perderVida() {
+    vidas--;
+    const casas = vidasContenedorEl.querySelectorAll(".casa");
+    const casaAPerder = casas[VIDAS_INICIALES - 1 - vidas];
+    if (casaAPerder) {
+      casaAPerder.classList.add("perdida");
+    }
+  }
+
+  function mezclarArray(array) {
+    const copia = [...array];
+    for (let i = copia.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+    return copia;
+  }
+
+  function mostrarPregunta() {
+    bloqueado = false;
+    mensajeEl.textContent = "";
+    mensajeEl.className = "mensaje";
+
+    const datos = preguntas[preguntaActual];
+    progresoEl.textContent = `PREGUNTA ${preguntaActual + 1} DE ${preguntas.length}`;
+    preguntaTextoEl.textContent = datos.pregunta;
+
+    opcionesContenedorEl.innerHTML = "";
+
+    const opcionesMezcladas = mezclarArray(datos.opciones);
+
+    const palos = [
+      { simbolo: "♠", color: "negra" },
+      { simbolo: "♣", color: "negra" },
+      { simbolo: "♥", color: "roja" },
+      { simbolo: "♦", color: "roja" }
+    ];
+    const valores = ["A", "K", "Q", "J", "10", "9", "8", "7"];
+
+    opcionesMezcladas.forEach((opcionTexto) => {
+      const boton = document.createElement("div");
+      boton.classList.add("opcion");
+      boton.dataset.texto = opcionTexto;
+
+      const paloElegido = palos[Math.floor(Math.random() * palos.length)];
+      const valorElegido = valores[Math.floor(Math.random() * valores.length)];
+
+      boton.innerHTML = `
+        <span class="pip superior ${paloElegido.color}">${valorElegido}<br>${paloElegido.simbolo}</span>
+        <span class="texto-opcion">${opcionTexto}</span>
+        <span class="pip inferior ${paloElegido.color}">${valorElegido}<br>${paloElegido.simbolo}</span>
+      `;
+
+      boton.style.animationDelay = `-${(Math.random() * 3).toFixed(2)}s`;
+      boton.style.animationDuration = `${(3 + Math.random() * 1.5).toFixed(2)}s`;
+
+      boton.addEventListener("click", () => elegirOpcion(boton, opcionTexto, datos.correcta));
+      opcionesContenedorEl.appendChild(boton);
+    });
+  }
+
+  function elegirOpcion(boton, opcionElegida, respuestaCorrecta) {
+    if (bloqueado) return;
+    bloqueado = true;
+
+    const todasLasOpciones = document.querySelectorAll(".opcion");
+    todasLasOpciones.forEach(op => op.classList.add("deshabilitada"));
+
+    if (opcionElegida === respuestaCorrecta) {
+      boton.classList.add("correcta");
+      mensajeEl.textContent = "¡Correcto! 🎉";
+      mensajeEl.classList.add("ok");
+      puntaje++;
+    } else {
+      boton.classList.add("incorrecta");
+      mensajeEl.textContent = `Incorrecto. La respuesta era: ${respuestaCorrecta}`;
+      mensajeEl.classList.add("error");
+      perderVida();
+
+      todasLasOpciones.forEach(op => {
+        if (op.dataset.texto === respuestaCorrecta) {
+          op.classList.add("correcta");
+        }
+      });
+    }
+
+    setTimeout(() => {
+      if (vidas <= 0) {
+        mostrarDerrota();
+        return;
+      }
+      preguntaActual++;
+      if (preguntaActual < preguntas.length) {
+        mostrarPregunta();
+      } else {
+        mostrarFinal();
+      }
+    }, 1400);
+  }
+
+  function mostrarDerrota() {
+    tarjetaJuegoEl.style.display = "none";
+    tarjetaDerrotaEl.style.display = "block";
+    puntajeDerrotaEl.textContent = `${puntaje} / ${preguntas.length}`;
+  }
+
+  // Al terminar el trivia sin quedarse sin vidas, se muestra el
+  // cartel de "¡Superaste todas las preguntas!" con el botón que
+  // lleva al segundo minijuego (ver iniciarSegundoJuego más abajo).
+  function mostrarFinal() {
+    tarjetaJuegoEl.style.display = "none";
+    tarjetaFinalEl.style.display = "block";
+    puntajeFinalEl.textContent = `${puntaje} / ${preguntas.length}`;
+  }
+
+  function reiniciarJuego() {
+    preguntaActual = 0;
+    puntaje = 0;
+    vidas = VIDAS_INICIALES;
+    tarjetaFinalEl.style.display = "none";
+    tarjetaDerrotaEl.style.display = "none";
+    tarjetaJuegoEl.style.display = "flex";
+    crearVidas();
+    mostrarPregunta();
+  }
+
+  /* =======================================================
+     ZONA DE EDICIÓN (JUEGO 2 - LA CASA TOMADA): el mapa de la
+     casa y el orden "correcto" en que las habitaciones fueron
+     tomadas a lo largo del relato.
+  ========================================================== */
+  const ctHabitaciones = [
+    { id: "biblioteca", nombre: "Biblioteca" },
+    { id: "comedorFondo", nombre: "Comedor del fondo" },
+    { id: "dormitorioHuespedes", nombre: "Dormitorio de huéspedes" },
+    { id: "salaCostura", nombre: "Sala de costura" },
+    { id: "living", nombre: "Living" },
+    { id: "dormitorioIrene", nombre: "Dormitorio de Irene" },
+    { id: "cocina", nombre: "Cocina" },
+    { id: "bano", nombre: "Baño" }
+  ];
+
+  const ctOrdenCorrecto = [
+    "biblioteca",
+    "comedorFondo",
+    "dormitorioHuespedes",
+    "salaCostura",
+    "cocina",
+    "bano",
+    "dormitorioIrene",
+    "living"
+  ];
+
+  const ctTextoFinalHistoria =
+    "Con la casa ya completamente silenciosa, los hermanos salen por el zaguán, " +
+    "cierran la puerta cancel y arrojan la llave a una alcantarilla antes de que " +
+    "alguien entre y se atreva a robar, avanzada la noche, con la casa tomada.";
+  /* ======================= FIN ZONA DE EDICIÓN (JUEGO 2) ======================= */
+
+  const CT_VIDAS_INICIALES = 3;
+
+  let ctIndiceActual = 0;
+  let ctVidas = CT_VIDAS_INICIALES;
+  let ctBloqueado = false;
+
+  const ctEstadoEl = document.getElementById("ctEstado");
+  const ctMensajeEl = document.getElementById("ctMensaje");
+  const ctEntradaEl = document.getElementById("ctEntrada");
+  const ctJuegoEl = document.getElementById("ctJuego");
+  const ctPantallaFinalEl = document.getElementById("ctPantallaFinal");
+  const ctPantallaGameOverEl = document.getElementById("ctPantallaGameOver");
+  const ctTextoFinalEl = document.getElementById("ctTextoFinal");
+  const ctVidasContenedorEl = document.getElementById("ctVidasContenedor");
+
+  function ctCrearVidas() {
+    ctVidasContenedorEl.innerHTML = "";
+    for (let i = 0; i < CT_VIDAS_INICIALES; i++) {
+      const vida = document.createElement("div");
+      vida.classList.add("ct-vida");
+      ctVidasContenedorEl.appendChild(vida);
+    }
+  }
+
+  function ctPerderVida() {
+    ctVidas--;
+    const casitas = ctVidasContenedorEl.querySelectorAll(".ct-vida");
+    const casitaAPerder = casitas[CT_VIDAS_INICIALES - 1 - ctVidas];
+    if (casitaAPerder) {
+      casitaAPerder.classList.add("perdida");
+    }
+  }
+
+  function ctAsignarNumerosAleatorios() {
+    const numeros = [1, 2, 3, 4, 5, 6, 7, 8];
+    for (let i = numeros.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [numeros[i], numeros[j]] = [numeros[j], numeros[i]];
+    }
+    ctHabitaciones.forEach((hab, i) => {
+      const el = document.getElementById(hab.id);
+      el.querySelector(".ct-numero").textContent = numeros[i];
+    });
+  }
+
+  function ctInicializarClicks() {
+    ctHabitaciones.forEach((hab) => {
+      const el = document.getElementById(hab.id);
+      el.addEventListener("click", () => ctSeleccionarHabitacion(hab.id, el));
+    });
+  }
+
+  function ctSeleccionarHabitacion(id, el) {
+    if (ctBloqueado) return;
+    if (el.classList.contains("tomada")) return;
+
+    if (id === ctOrdenCorrecto[ctIndiceActual]) {
+      el.classList.add("tomada");
+      ctIndiceActual++;
+      ctEstadoEl.textContent = `Habitaciones tomadas: ${ctIndiceActual} / ${ctOrdenCorrecto.length}`;
+      ctMensajeEl.textContent = "La Presencia avanza un poco más...";
+      ctMensajeEl.className = "ct-mensaje ok";
+
+      if (ctIndiceActual === ctOrdenCorrecto.length) {
+        ctBloqueado = true;
+        ctEntradaEl.classList.add("abierta");
+        setTimeout(ctMostrarFinal, 900);
+      }
+    } else {
+      el.classList.add("error");
+      ctMensajeEl.textContent = "Todavía no... esa habitación no es la siguiente en ser tomada.";
+      ctMensajeEl.className = "ct-mensaje error";
+      setTimeout(() => el.classList.remove("error"), 400);
+
+      ctPerderVida();
+      if (ctVidas <= 0) {
+        ctBloqueado = true;
+        setTimeout(ctMostrarGameOver, 500);
+      }
+    }
+  }
+
+  function ctMostrarGameOver() {
+    ctJuegoEl.style.display = "none";
+    ctPantallaGameOverEl.style.display = "block";
+  }
+
+  function ctMostrarFinal() {
+    ctJuegoEl.style.display = "none";
+    ctTextoFinalEl.textContent = ctTextoFinalHistoria;
+    ctPantallaFinalEl.style.display = "block";
+  }
+
+  function ctReiniciarJuego() {
+    ctIndiceActual = 0;
+    ctVidas = CT_VIDAS_INICIALES;
+    ctBloqueado = false;
+    ctHabitaciones.forEach((hab) => {
+      const el = document.getElementById(hab.id);
+      el.classList.remove("tomada", "error");
+    });
+    ctEntradaEl.classList.remove("abierta");
+    ctEstadoEl.textContent = `Habitaciones tomadas: 0 / ${ctOrdenCorrecto.length}`;
+    ctMensajeEl.textContent = "Hacé clic en las habitaciones en el orden en que la Presencia las fue tomando.";
+    ctMensajeEl.className = "ct-mensaje";
+    ctCrearVidas();
+    ctAsignarNumerosAleatorios();
+    ctPantallaFinalEl.style.display = "none";
+    ctPantallaGameOverEl.style.display = "none";
+    ctJuegoEl.style.display = "block";
+  }
+
+  // Se llama cuando el jugador termina el trivia sin quedarse
+  // sin vidas: oculta todo el juego 1 y arranca el juego 2.
+  function iniciarSegundoJuego() {
+    tarjetaJuegoEl.style.display = "none";
+    tarjetaFinalEl.style.display = "none";
+    tarjetaDerrotaEl.style.display = "none";
+    segundoJuegoEl.style.display = "block";
+    ctReiniciarJuego();
+  }
+
+  const segundoJuegoEl = document.getElementById("segundoJuego");
+
+  // Preparar los clicks del segundo juego desde el arranque
+  // (el contenedor está oculto hasta que se gane el trivia)
+  ctInicializarClicks();
+
+  // Iniciar juego 1 (trivia)
+  crearVidas();
+  mostrarPregunta();
+</script>
+
+</body>
+</html>
